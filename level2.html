@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>SDGs 性別平權－情境題</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Microsoft JhengHei", sans-serif;
+      background-image: url('test.jpg'); /* 遊樂園背景，可更換 */
+      background-size: cover;
+      background-position: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.6);
+      font-weight: bold;
+    }
+
+    #playground {
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 60px);
+    }
+
+    .flower {
+      position: absolute;
+      width: 80px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .flower:hover {
+      transform: scale(1.1);
+    }
+
+    #questionBox {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255,255,255,0.95);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      display: none;
+      width: 80%;
+      max-width: 600px;
+      text-align: center;
+    }
+
+    .dropZone {
+      border: 2px dashed #999;
+      border-radius: 10px;
+      width: 45%;
+      min-height: 120px;
+      padding: 10px;
+      display: inline-block;
+      vertical-align: top;
+    }
+
+    .dragItem {
+      background: #f0f0f0;
+      border-radius: 8px;
+      padding: 8px;
+      margin: 5px;
+      cursor: grab;
+    }
+
+    #resultBox {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+      display: none;
+      text-align: center;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #45a049;
+    }
+
+    #zones {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 15px;
+    }
+
+    h4 {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>SDGs 性別平權－情境題</div>
+    <div>答對題數：<span id="score">0</span> / 6</div>
+  </header>
+
+  <div id="playground"></div>
+
+  <div id="questionBox">
+    <h3 id="questionText"></h3>
+    <div id="dragItems"></div>
+    <div id="zones">
+      <div class="dropZone" id="equalZone">
+        <h4>性別平等</h4>
+      </div>
+      <div class="dropZone" id="unequalZone">
+        <h4>性別不平等</h4>
+      </div>
+    </div>
+    <button id="submitBtn">提交答案</button>
+  </div>
+
+  <div id="resultBox">
+    <h2 id="resultMessage"></h2>
+    <button id="retryBtn" style="display:none;">再次挑戰</button>
+    <button id="certificateBtn" style="display:none;">下載學習證書</button>
+  </div>
+
+  <script>
+    // 題組資料，每組2個行為
+    const questionSets = [
+      {
+        q: "在職場中的性別行為判斷",
+        items: [
+          { text: "公司保障男性與女性同工同酬", correct: "equal" },
+          { text: "主管只升遷男性員工", correct: "unequal" }
+        ]
+      },
+      {
+        q: "家庭角色分工的觀念",
+        items: [
+          { text: "家事由男女共同分擔", correct: "equal" },
+          { text: "只有女性該照顧孩子", correct: "unequal" }
+        ]
+      },
+      {
+        q: "教育機會的平等",
+        items: [
+          { text: "男孩女孩都能上學", correct: "equal" },
+          { text: "女生不需要念大學", correct: "unequal" }
+        ]
+      },
+      {
+        q: "公共場所中的行為",
+        items: [
+          { text: "尊重多元性別者使用公共廁所的權利", correct: "equal" },
+          { text: "取笑性別非二元的人", correct: "unequal" }
+        ]
+      },
+      {
+        q: "工作場合的待遇",
+        items: [
+          { text: "以能力與表現為晉升標準", correct: "equal" },
+          { text: "只給男性領導機會", correct: "unequal" }
+        ]
+      },
+      {
+        q: "社會文化觀念",
+        items: [
+          { text: "鼓勵女孩從事科學與科技工作", correct: "equal" },
+          { text: "覺得工程師應該都是男生", correct: "unequal" }
+        ]
+      }
+    ];
+
+    const scoreDisplay = document.getElementById("score");
+    const playground = document.getElementById("playground");
+    const questionBox = document.getElementById("questionBox");
+    const questionText = document.getElementById("questionText");
+    const dragItemsDiv = document.getElementById("dragItems");
+    const equalZone = document.getElementById("equalZone");
+    const unequalZone = document.getElementById("unequalZone");
+    const submitBtn = document.getElementById("submitBtn");
+
+    let currentIndex = null;
+    let answered = new Set();
+    let score = 0;
+
+    // 建立3朵隨機花朵
+    for (let i = 0; i < 3; i++) {
+      const flower = document.createElement("img");
+      flower.src = "test1.jpg"; // 花朵圖示，可替換
+      flower.classList.add("flower");
+      flower.style.left = Math.random() * 80 + 10 + "%";
+      flower.style.top = Math.random() * 30 + 60 + "%"; // 下半部
+      flower.dataset.index = i;
+      flower.addEventListener("click", () => openQuestion(i, flower));
+      playground.appendChild(flower);
+    }
+
+    // 拖曳事件設定
+    function enableDragAndDrop() {
+      const dragItems = document.querySelectorAll(".dragItem");
+      dragItems.forEach(item => {
+        item.draggable = true;
+        item.addEventListener("dragstart", e => {
+          e.dataTransfer.setData("text", e.target.id);
+        });
+      });
+
+      [equalZone, unequalZone].forEach(zone => {
+        zone.ondragover = e => e.preventDefault();
+        zone.ondrop = e => {
+          e.preventDefault();
+          const id = e.dataTransfer.getData("text");
+          const el = document.getElementById(id);
+          zone.appendChild(el);
+        };
+      });
+    }
+
+    function openQuestion(i, flower) {
+      if (answered.has(i)) return;
+      currentIndex = i;
+      const q = questionSets[i * 2] || questionSets[i * 2 + 0]; // 每朵花對應2題組中的一組
+      const q2 = questionSets[i * 2 + 1] || questionSets[i];
+      const group = [q, q2].filter(Boolean); // 每朵花2題
+      currentGroup = group;
+      showQuestionGroup(group, flower);
+    }
+
+    let currentGroup = [];
+
+    function showQuestionGroup(group, flower) {
+      let allItems = [];
+      group.forEach(g => allItems.push(...g.items));
+      dragItemsDiv.innerHTML = "";
+      equalZone.innerHTML = "<h4>性別平等</h4>";
+      unequalZone.innerHTML = "<h4>性別不平等</h4>";
+      questionText.textContent = "請將下列語句拖曳到正確的分類框中：";
+      allItems.forEach((item, idx) => {
+        const div = document.createElement("div");
+        div.classList.add("dragItem");
+        div.textContent = item.text;
+        div.id = "drag" + idx;
+        div.dataset.correct = item.correct;
+        dragItemsDiv.appendChild(div);
+      });
+      enableDragAndDrop();
+      questionBox.style.display = "block";
+
+      submitBtn.onclick = () => {
+        let correct = 0;
+        document.querySelectorAll(".dragItem").forEach(el => {
+          const parentId = el.parentElement.id;
+          if (parentId === el.dataset.correct + "Zone") correct++;
+        });
+        score += correct;
+        scoreDisplay.textContent = score;
+        answered.add(currentIndex);
+        questionBox.style.display = "none";
+        flower.style.opacity = "0.5";
+
+        if (answered.size === 3) showFinalResult();
+      };
+    }
+
+    function showFinalResult() {
+      const resultBox = document.getElementById("resultBox");
+      const resultMsg = document.getElementById("resultMessage");
+      const retryBtn = document.getElementById("retryBtn");
+      const certBtn = document.getElementById("certificateBtn");
+
+      let level = "";
+      if (score < 8) level = "再加油";
+      else if (score < 11) level = "進步中";
+      else level = "平權達人";
+
+      resultMsg.textContent = `你的等級是：「${level}」！（共答對 ${score} 題）`;
+      resultBox.style.display = "block";
+
+      if (level === "平權達人") {
+        retryBtn.style.display = "none";
+        certBtn.style.display = "inline-block";
+        certBtn.onclick = () => location.href = "certificate.html";
+      } else {
+        retryBtn.style.display = "inline-block";
+        certBtn.style.display = "none";
+        retryBtn.onclick = () => location.reload();
+      }
+    }
+  </script>
+</body>
+</html>

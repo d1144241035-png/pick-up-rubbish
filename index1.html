@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>SDGs 性別平權</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Microsoft JhengHei", sans-serif;
+      background-image: url('test.jpg'); /* 村莊背景，可自行換圖 */
+      background-size: cover;
+      background-position: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.6);
+      font-weight: bold;
+    }
+
+    #village {
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 60px);
+    }
+
+    .hut {
+      position: absolute;
+      width: 80px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .hut:hover {
+      transform: scale(1.1);
+    }
+
+    #questionBox {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      display: none;
+      width: 300px;
+      text-align: center;
+    }
+
+    #resultBox {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+      display: none;
+      text-align: center;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>SDGs 性別平權</div>
+    <div>答對題數：<span id="score">0</span> / 10</div>
+  </header>
+
+  <div id="village"></div>
+
+  <!-- 題目彈窗 -->
+  <div id="questionBox">
+    <h3 id="questionText"></h3>
+    <div id="options"></div>
+  </div>
+
+  <!-- 結果顯示 -->
+  <div id="resultBox">
+    <h2 id="resultMessage"></h2>
+    <button id="restartBtn" style="display:none;">重新挑戰</button>
+    <button id="nextBtn" style="display:none;">前往下一關</button>
+  </div>
+
+  <script>
+    // 題庫
+    const questions = [
+      {
+        q: "SDG 目標 5 的主題是什麼？",
+        options: ["性別平等", "環境保護", "消除貧窮"],
+        answer: 0
+      },
+      {
+        q: "下列哪一項是性別平權的具體作法？",
+        options: ["禁止女性受教育", "提倡男女同工同酬", "只讓男性投票"],
+        answer: 1
+      },
+      {
+        q: "以下哪個是性別歧視的例子？",
+        options: ["公司只聘用男性主管", "人人都有教育機會", "家庭分工公平"],
+        answer: 0
+      },
+      {
+        q: "性別平權的核心理念是什麼？",
+        options: ["男女互不往來", "尊重與平等對待所有性別", "男性優於女性"],
+        answer: 1
+      },
+      {
+        q: "下列哪個職業女性不能從事？",
+        options: ["消防員", "科學家", "沒有任何職業限制"],
+        answer: 2
+      },
+      {
+        q: "家庭中實踐性別平權的方式是？",
+        options: ["家事共同分擔", "只讓媽媽煮飯", "爸爸不能帶小孩"],
+        answer: 0
+      },
+      {
+        q: "性別平權不僅限於男女，還包含？",
+        options: ["不同年齡層", "多元性別", "只有男性"],
+        answer: 1
+      },
+      {
+        q: "下列何者屬於促進性別平權的政策？",
+        options: ["保障女性教育機會", "限制女性投票", "禁止男性育嬰假"],
+        answer: 0
+      },
+      {
+        q: "在工作場合中，應避免？",
+        options: ["依能力給予機會", "性別刻板印象", "平等晉升制度"],
+        answer: 1
+      },
+      {
+        q: "推動性別平權的最終目標是？",
+        options: ["所有人都能被尊重與公平對待", "讓男性有更多特權", "女性不需工作"],
+        answer: 0
+      }
+    ];
+
+    let score = 0;
+    let answered = new Set();
+
+    // 產生 10 間茅草屋
+    const village = document.getElementById("village");
+    for (let i = 0; i < 10; i++) {
+      const hut = document.createElement("img");
+      hut.src = "test1.jpg"; // 茅草屋圖，可自行替換
+      hut.classList.add("hut");
+      hut.style.top = Math.random() * 70 + 10 + "%";
+      hut.style.left = Math.random() * 80 + 10 + "%";
+      hut.dataset.index = i;
+      hut.addEventListener("click", () => openQuestion(i, hut));
+      village.appendChild(hut);
+    }
+
+    const questionBox = document.getElementById("questionBox");
+    const questionText = document.getElementById("questionText");
+    const optionsDiv = document.getElementById("options");
+    const scoreDisplay = document.getElementById("score");
+
+    function openQuestion(index, hut) {
+      if (answered.has(index)) return; // 已回答過
+      const q = questions[index];
+      questionText.textContent = q.q;
+      optionsDiv.innerHTML = "";
+      q.options.forEach((opt, i) => {
+        const btn = document.createElement("button");
+        btn.textContent = opt;
+        btn.onclick = () => checkAnswer(index, i, hut);
+        optionsDiv.appendChild(btn);
+      });
+      questionBox.style.display = "block";
+    }
+
+    function checkAnswer(index, choice, hut) {
+      const q = questions[index];
+      if (choice === q.answer) {
+        alert("答對了！");
+        score++;
+        scoreDisplay.textContent = score;
+      } else {
+        alert("答錯了！");
+      }
+      answered.add(index);
+      hut.style.opacity = "0.5"; // 已回答過變暗
+      questionBox.style.display = "none";
+
+      if (answered.size === 10) showResult();
+    }
+
+    function showResult() {
+      const resultBox = document.getElementById("resultBox");
+      const resultMsg = document.getElementById("resultMessage");
+      const restartBtn = document.getElementById("restartBtn");
+      const nextBtn = document.getElementById("nextBtn");
+
+      if (score >= 8) {
+        resultMsg.textContent = `恭喜！你答對了 ${score} 題，通過第一關！`;
+        nextBtn.style.display = "inline-block";
+        restartBtn.style.display = "none";
+      } else {
+        resultMsg.textContent = `你答對了 ${score} 題，未達 8 題，請重新挑戰！`;
+        restartBtn.style.display = "inline-block";
+        nextBtn.style.display = "none";
+      }
+
+      resultBox.style.display = "block";
+
+      restartBtn.onclick = () => location.reload();
+      nextBtn.onclick = () => location.href = "level2.html";
+    }
+  </script>
+</body>
+</html>
